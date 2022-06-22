@@ -5,14 +5,119 @@ date: "6/22/2022"
 output: html_document
 ---
 
-First of all lets loar required libraries 
+First of all lets load required libraries
 
-```{r}
+```{r warning=FALSE}
 rm(list = ls())
 
 library(tidyverse)
 library(here)
+library(scales)
+library(ggrepel)   
 
 set.seed(42)
+theme_set(theme_minimal())
 ```
 
+# Load data
+
+First, lets load all three datasets and clean them a bit so we can work with them.
+
+## Cities data
+
+Lets start with the set related to the biggest cities in the world
+
+```{r}
+cities <- read_csv(here(
+  "data", "largest_cities.csv")) |> 
+  # we don't need these columns
+  select(-`Countries' Flags`,
+         -`From 1950 - 2035`) |>  
+  # convert to tidy format
+  pivot_longer(-c(Country, City), 
+               names_to = "Year",
+               values_to = "Population") |> 
+  # set appropriate data type 
+  mutate(Year       = as.integer(Year),
+         Population = as.integer(Population)) 
+
+
+
+cities |> glimpse()
+```
+
+Data is loaded and tidy, lets try to do some summary statistic to better understand the data
+
+```{r}
+cities |> 
+  group_by(Country, City) |> 
+  summarise(na = sum(is.na(Population))) |> 
+  arrange(desc(na))
+```
+
+For some Cities there are a lot of missing values we need to do something with them.
+
+```{r}
+cities |> 
+  filter(City == "San Francisco")  
+```
+
+For example San Francisco. There is basically only one value for this city. Also, for very few cities there are data for > 2022 year, which I think is not reliable. So I will filter out those observations.
+
+```{r}
+cities <- cities |> 
+  filter(Year <= 2020)
+```
+
+```{r}
+cities |> 
+  group_by(Country, City) |> 
+  summarise(na = sum(is.na(Population))) |> 
+  arrange(desc(na))
+```
+
+So far I don't know how I am going to use this data, so I will not do anything with those missing values.
+
+### Biggest 10 Cities
+
+Lets plot the population growth data for the 10 biggest cities for based for 2020 year
+
+```{r}
+top_10_cities <- cities |> 
+  filter(Year == 2020) |> 
+  arrange(desc(Population)) |> 
+  head(10) |> 
+  pull(City)
+  
+```
+
+```{r}
+cities |> 
+  # select biggest cities
+  filter(City %in% top_10_cities) |> 
+  # set Cities as factor to plot colours properly
+  mutate(City = factor(City, levels = top_10_cities)) |> 
+  
+  
+  # plot
+  ggplot(aes(x = Year, y = Population, 
+             color = City)) + 
+  geom_line(size = 0.75) +
+  scale_y_continuous(labels = label_number_si()) +
+  labs(title = "Dynamics of the Pupulation Growth of 10 Largest Cities")
+```
+
+The numbers are actually suspiciously high. I've checked on [wikipedia](https://en.wikipedia.org/wiki/Tokyo#Demographics) there was only 14 million of people living in Tokyo in 2020, but not > 30 million like on the graph. 
+
+On the dataset documentation it is also not written about the nature of the data. 
+
+
+
+
+
+
+
+
+```{r}
+sessionInfo()
+```
