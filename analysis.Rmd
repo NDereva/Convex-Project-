@@ -13,7 +13,8 @@ rm(list = ls())
 library(tidyverse)
 library(here)
 library(scales)
-library(ggrepel)   
+library(janitor)
+library(ggrepel)
 
 set.seed(42)
 theme_set(theme_minimal())
@@ -29,7 +30,16 @@ Lets start with the set related to the biggest cities in the world
 
 ```{r}
 cities <- read_csv(here(
-  "data", "largest_cities.csv")) |> 
+  "data", "largest_cities.csv")) 
+
+
+cities |> glimpse()
+```
+
+Definitely some transformation needed 
+
+```{r}
+cities <-  cities |> 
   # we don't need these columns
   select(-`Countries' Flags`,
          -`From 1950 - 2035`) |>  
@@ -41,9 +51,7 @@ cities <- read_csv(here(
   mutate(Year       = as.integer(Year),
          Population = as.integer(Population)) 
 
-
-
-cities |> glimpse()
+head(cities)
 ```
 
 Data is loaded and tidy, lets try to do some summary statistic to better understand the data
@@ -78,7 +86,7 @@ cities |>
 
 So far I don't know how I am going to use this data, so I will not do anything with those missing values.
 
-### Biggest 10 Cities
+## Biggest 10 Cities
 
 Lets plot the population growth data for the 10 biggest cities for based for 2020 year
 
@@ -112,8 +120,133 @@ The numbers are actually suspiciously high. I've checked on [wikipedia](https://
 On the dataset documentation it is also not written about the nature of the data. 
 
 
+## buildings data 
+
+```{r}
+bild <- read.csv(here("data", "tallest_buildings.csv")) |>
+  clean_names()
 
 
+bild |> glimpse()
+```
+I will have to do some data preparation 
+
+```{r}
+bild <- bild |> 
+  # split height into two columns ft and m 
+  separate(height, into = c("height_m", "height_ft"), sep = "\n/\n") |> 
+  
+  # extract number and convert to decimal 
+  mutate(height_m =  str_extract(height_m,
+                                 # some digits maybe dot and one digit
+                                 regex("^[:digit:]*[:punct:]?[:digit:]")),
+         height_m = as.double(height_m),
+         
+         height_ft = str_extract(height_ft, 
+                                 # maybe digit maybe dot and some digits
+                                 regex("^[:digit:]?[:punct:]?[:digit:]*")),
+         height_ft = str_replace(height_ft, ",", "."),
+         height_ft = as.double(height_ft), 
+         
+         # extract materials 
+         material = str_extract(material, regex("[:lower:]*"))
+         ) |> 
+  rename(year = completion) |> 
+  
+  # drop one duplicated value
+  filter(!duplicated(rank))
+
+
+bild |> head()
+```
+
+
+### Relationship between year highest building 
+
+
+```{r}
+bild |> 
+  arrange(year) |> 
+  mutate(highest_building = cummax(height_m)) |> 
+  
+  # Plot
+  ggplot(aes(x = year, y = height_m)) +
+  geom_point(aes(color = material), size = 3, alpha = 0.5) +
+  geom_line(aes(x = year, y = highest_building),
+            alpha = 0.3, linetype = "dashed") +
+  
+  # add text 
+  geom_text_repel(
+    data = subset(bild, rank %in% c(1,10,17,23,49,87)),
+      aes(label = name),
+      size = 3,
+      box.padding = 0.5,
+      arrow = arrow(length = unit(0.010, "npc")),
+      nudge_x = -2,
+      nudge_y = 5,
+      color = "grey50"
+  ) +
+  
+  labs(title = "Evolution of the highest buildings",
+       y = "Height in meters",
+       x = "") 
+  
+  
+```
+
+
+## Load Countries Data
+
+```{r}
+count <- read.csv(here("data", "countries.csv"), dec = ",") |> 
+  clean_names()
+
+glimpse(count)
+```
+
+
+
+
+Lets explore some data a bit 
+
+```{r}
+count |> 
+  summarise(across(everything(), ~ sum(is.na(.)))) |> 
+  pivot_longer(cols = everything(),
+               names_to = "column",
+               values_to = "na_count")
+```
+
+We have some missing values
+
+
+```{r}
+count |> 
+  count(region, sort = TRUE)
+```
+
+
+```{r}
+count |> 
+  mutate(region = as_factor(region) |> 
+           fct_reorder(gdp_per_capita)) |> 
+
+  ggplot(aes(x = gdp_per_capita, y = birthrate)) +
+  geom_point(aes(col = region, size = population), alpha = 0.5) +
+
+  scale_x_log10(label = dollar_format(accuracy = 1)) +
+  geom_smooth(method = "lm", alpha = 0.3) + 
+  scale_size(guide = FALSE) +
+  
+  labs(title = "Relationship between GDP Per Capita and Average Birthrate",
+       x = "GDP Per Capita", 
+       y = "Birthrate",
+       caption = "Size of buble represent population size")
+  
+  
+
+
+```
 
 
 
