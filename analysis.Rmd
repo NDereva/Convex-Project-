@@ -2,12 +2,14 @@
 title: "Convex Project"
 author: "Mykola Dereva"
 date: "6/22/2022"
-output: html_document
+output: 
+  md_document:
+    variant: markdown_github
 ---
 
 First of all lets load required libraries
 
-```{r warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 rm(list = ls())
 
 library(tidyverse)
@@ -199,7 +201,11 @@ bild |>
 
 ```{r}
 count <- read.csv(here("data", "countries.csv"), dec = ",") |> 
-  clean_names()
+  clean_names() |> 
+  
+  # Clean strings vectors from whitespases 
+  mutate(country = str_trim(country),
+         region = str_trim(region))
 
 glimpse(count)
 ```
@@ -231,21 +237,147 @@ count |>
   mutate(region = as_factor(region) |> 
            fct_reorder(gdp_per_capita)) |> 
 
-  ggplot(aes(x = gdp_per_capita, y = birthrate)) +
-  geom_point(aes(col = region, size = population), alpha = 0.5) +
+  ggplot(aes(y = gdp_per_capita, x = birthrate)) +
+  geom_point(aes(col = region, size = population*2), alpha = 0.5) +
 
-  scale_x_log10(label = dollar_format(accuracy = 1)) +
+  scale_y_log10(label = dollar_format(accuracy = 1)) +
   geom_smooth(method = "lm", alpha = 0.3) + 
   scale_size(guide = FALSE) +
   
   labs(title = "Relationship between GDP Per Capita and Average Birthrate",
-       x = "GDP Per Capita", 
-       y = "Birthrate",
+       y = "GDP Per Capita", 
+       x = "Birthrate",
        caption = "Size of buble represent population size")
   
   
 
 
+```
+
+
+# The grow of population on each continent 
+
+To make this plot we would need to join the datasets
+
+```{r}
+cities |> 
+  distinct(Country, City) |> 
+  arrange(Country)
+
+```
+
+
+```{r}
+count |> 
+  distinct(region, country) |> 
+  arrange(country) |> 
+  head()
+```
+
+
+Countries are named differently in the two datasets, to we need to standardise them for joining. 
+
+```{r}
+library(countrycode)
+```
+
+Small helper function
+
+```{r}
+## Takes country name as input and convert it to set standard country name
+
+standatise_country_name <- function(old_country_name, 
+                                    initial_code_scheme = "country.name",
+                                    
+                                    # ISO English short name
+                                    resulting_code_scheme = "iso.name.en") {
+  
+  new_country_name <- countrycode(sourcevar = old_country_name,
+                        origin = initial_code_scheme,
+                        destination = resulting_code_scheme,
+                        warn = TRUE,
+                        nomatch = NULL)
+  
+  return(new_country_name)
+  }
+```
+
+
+```{r}
+count <- count |> 
+  mutate(country_new = standatise_country_name(country,
+                                    resulting_code_scheme = "iso3c"))
+```
+
+```{r}
+cities <- cities |> 
+  mutate(Country_new = standatise_country_name(Country,
+                                    resulting_code_scheme = "iso3c"))
+```
+
+
+Add the information about region to the cities dataset and plot it 
+
+```{r}
+count |> 
+  select(region, country_new) |> 
+  right_join(cities, by = c("country_new" = "Country_new")) |> 
+  
+  # Filter out those two regions due to limited observation number
+  filter(!region %in% c("NEAR EAST", "SUB-SAHARAN AFRICA")) |> 
+  
+  
+  # plot 
+  ggplot(aes(x = Year, y = Population, 
+             color = City)) + 
+  geom_line(size = 0.75) +
+  scale_y_continuous(labels = label_number_si()) +
+
+  facet_wrap(vars(region), nrow  = 2, scales = "free_y") + 
+  theme(legend.position = "none")  +
+  
+  labs(title = "Dynamics of the Cities Pupulation Growth in different Regions of the world", 
+       x = "") 
+  
+  
+```
+
+The plot would have been more beautiful if we have had more data. 
+
+
+
+
+## Tallest building in 5 biggest cities 
+
+
+
+```{r}
+cities_with_many_big_buildings <-  bild |> 
+  count(city, sort = TRUE) |> 
+  filter(n >= 6 ) |> 
+  pull(city)
+
+cities_with_many_big_buildings
+```
+
+
+```{r}
+bild |> 
+  #prepare data
+  filter(city %in% cities_with_many_big_buildings) |>
+  group_by(city) |> 
+  mutate(name = fct_reorder(name, height_m)) |> 
+
+  # plot
+  ggplot(aes(x = name, y = height_m)) +
+  geom_col(fill = "cornflowerblue") + 
+  coord_flip() +
+  facet_grid(rows = vars(city),  scales = "free_y", space = "free_y") +
+  
+  # labels
+  labs(title = "Highest buildings in the selected cities",
+       x = "Building name",
+       y = "Height in meters")
 ```
 
 
