@@ -11,6 +11,9 @@ library(ggrepel)
 
 set.seed(42)
 theme_set(theme_minimal())
+
+# set resolution and aspect ratio of figures
+knitr::opts_chunk$set(fig.retina = 2, fig.dim = c(10, 5))
 ```
 
 # Load data
@@ -277,18 +280,11 @@ cities |>
   ggplot(aes(x = Year, y = Population, 
              color = City)) + 
   geom_line(size = 0.75) +
-  scale_y_continuous(labels = label_number_si()) +
-  labs(title = "Dynamics of the Pupulation Growth of 10 Largest Cities")
+  scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) + 
+  labs(title = "Dynamics of the Population Growth of 10 Largest Cities")
 ```
 
-    ## Warning: `label_number_si()` was deprecated in scales 1.2.0.
-    ## Please use the `scale_cut` argument of `label_number()` instead.
-    ## This warning is displayed once every 8 hours.
-    ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
-
-    ## Warning: Removed 65 row(s) containing missing values (geom_path).
-
-![](analysis_files/figure-markdown_github/unnamed-chunk-9-1.png)
+<img src="analysis_files/figure-markdown_github/unnamed-chunk-9-1.png" width="960" />
 
 The numbers are actually suspiciously high. I’ve checked on
 [wikipedia](https://en.wikipedia.org/wiki/Tokyo#Demographics) there was
@@ -365,7 +361,7 @@ bild |> head()
     ## 5 composite hotel / residential / office / retail
     ## 6 composite                                office
 
-### Relationship between year highest building
+## Evolution of highest buildings
 
 ``` r
 bild |> 
@@ -395,7 +391,7 @@ bild |>
        x = "") 
 ```
 
-![](analysis_files/figure-markdown_github/unnamed-chunk-12-1.png)
+<img src="analysis_files/figure-markdown_github/unnamed-chunk-12-1.png" width="960" />
 
 ## Load Countries Data
 
@@ -403,7 +399,7 @@ bild |>
 count <- read.csv(here("data", "countries.csv"), dec = ",") |> 
   clean_names() |> 
   
-  # Clean strings vectors from whitespases 
+  # Clean strings vectors from whitespaces 
   mutate(country = str_trim(country),
          region = str_trim(region))
 
@@ -507,14 +503,7 @@ count |>
 
     ## `geom_smooth()` using formula 'y ~ x'
 
-    ## Warning: Removed 3 rows containing non-finite values (stat_smooth).
-
-    ## Warning: Removed 3 rows containing missing values (geom_point).
-
-    ## Warning: It is deprecated to specify `guide = FALSE` to remove a guide. Please
-    ## use `guide = "none"` instead.
-
-![](analysis_files/figure-markdown_github/unnamed-chunk-16-1.png)
+<img src="analysis_files/figure-markdown_github/unnamed-chunk-16-1.png" width="960" />
 
 # The grow of population on each continent
 
@@ -562,8 +551,6 @@ standardise them for joining.
 ``` r
 library(countrycode)
 ```
-
-    ## Warning: package 'countrycode' was built under R version 4.1.3
 
 Small helper function
 
@@ -622,9 +609,7 @@ count |>
        x = "") 
 ```
 
-    ## Warning: Removed 1596 row(s) containing missing values (geom_path).
-
-![](analysis_files/figure-markdown_github/unnamed-chunk-23-1.png)
+<img src="analysis_files/figure-markdown_github/unnamed-chunk-23-1.png" width="960" />
 
 The plot would have been more beautiful if we have had more data.
 
@@ -660,7 +645,7 @@ bild |>
        y = "Height in meters")
 ```
 
-![](analysis_files/figure-markdown_github/unnamed-chunk-25-1.png)
+<img src="analysis_files/figure-markdown_github/unnamed-chunk-25-1.png" width="960" />
 
 ``` r
 sessionInfo()
